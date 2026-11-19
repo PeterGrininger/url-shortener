@@ -1,0 +1,20 @@
+# syntax=docker/dockerfile:1
+
+# Ein-Stage-Variante zum Vergleich: SDK, Quellcode und Build-Werkzeuge
+# bleiben im finalen Image.
+#großes sdk image als Basis
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+
+#kopiert alles auf einmal
+WORKDIR /src
+COPY . .
+
+#kompiliert/publiziert die app im selben image
+RUN dotnet publish UrlShortener.csproj -c Release -o /app/publish
+
+WORKDIR /app/publish
+ENV ASPNETCORE_HTTP_PORTS=8080
+EXPOSE 8080
+
+#läuft als root
+ENTRYPOINT ["dotnet", "UrlShortener.dll"]

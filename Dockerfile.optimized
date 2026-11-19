@@ -1,0 +1,27 @@
+# syntax=docker/dockerfile:1
+
+# Build-Stage: SDK und Build-Abhaengigkeiten werden nur hier benoetigt.
+#Hier wird nur gebaut (mit dem großen SDK-image)
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+
+#Hier wird nur die Projektdatei und NuGet-Config kopiert 
+WORKDIR /src
+COPY ["UrlShortener.csproj", "NuGet.Config", "./"]
+RUN dotnet restore "UrlShortener.csproj"
+
+#Erst jetzt wird der Rest kopiert und gebaut
+COPY . .
+RUN dotnet publish "UrlShortener.csproj" -c Release -o /app/publish --no-restore /p:UseAppHost=false
+
+# Runtime-Stage: (das "schlanke" image) nur ASP.NET Runtime und das publizierte Ergebnis.
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+
+WORKDIR /app
+ENV ASPNETCORE_HTTP_PORTS=8080
+EXPOSE 8080
+#Nur das fertige Ergebnis aus der Build-Stage wird kopiert
+COPY --from=build /app/publish .
+
+#Sicherheit: läuft nicht mehr als root
+USER $APP_UID
+ENTRYPOINT ["dotnet", "UrlShortener.dll"]
